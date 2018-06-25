@@ -43,14 +43,24 @@ class LdapService
         $emailAttr = $this->config['email_attribute'];
         $followReferrals = $this->config['follow_referrals'] ? 1 : 0;
         $this->ldap->setOption($ldapConnection, LDAP_OPT_REFERRALS, $followReferrals);
-        $users = $this->ldap->searchAndGetEntries($ldapConnection, $baseDn, $userFilter, ['cn', 'uid', 'dn', $emailAttr]);
+        $users = $this->ldap->searchAndGetEntries($ldapConnection, $baseDn, $userFilter, ['cn', 'uid', 'objectGUID', 'dn', $emailAttr]);
         if ($users['count'] === 0) {
             return null;
         }
 
         $user = $users[0];
+        
+        $uid = null;
+        if (isset($user['uid'])) {
+            $uid = $user['uid'][0]
+        } elseif (isset($user['objectGUID'])) {
+            $uid = $user['objectGUID']
+        } else {
+            $uid = $user['dn']
+        }
+        
         return [
-            'uid'   => (isset($user['uid'])) ? $user['uid'][0] : $user['dn'],
+            'uid'   => $uid,
             'name'  => $user['cn'][0],
             'dn'    => $user['dn'],
             'email' => (isset($user[$emailAttr])) ? (is_array($user[$emailAttr]) ? $user[$emailAttr][0] : $user[$emailAttr]) : null
